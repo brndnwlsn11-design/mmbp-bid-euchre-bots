@@ -53,3 +53,6 @@ To deploy: upload the five application files (not this ZIP itself) into the root
 - Tap your own avatar during a game to open eight Minnesota-style table-talk emotes. Speech bubbles appear to everyone briefly. Emotes never submit game actions.
 - The score and results label your own partnership **Good Guys** and the opposing partnership **Bad Guys**; labels reverse for opponents.
 - Built on the human-only v1.1.1 game; no bot code is included. Existing rooms remain compatible, with default avatars for previously seated players.
+
+
+Avatar hotfix: Your own avatar is now a clickable button in the bottom player band, next to your name above your cards. Tap it to open/close the table-talk emote menu.

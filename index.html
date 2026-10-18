@@ -227,6 +227,7 @@ button.card.dim { filter: brightness(.62); }
 .emote-menu-grid button {font:inherit;background:#2b5346;border:1px solid #78917b;color:#fff;border-radius:8px;padding:10px 4px;cursor:pointer;}
 .emote-bubble {position:relative;z-index:4;background:#f8ebcf;color:#173d34;border-radius:10px;padding:5px 8px;font-weight:800;font-size:12px;max-width:150px;overflow-wrap:anywhere;text-align:center;box-shadow:0 2px 8px #0006;}
 .mineband .avatar {vertical-align:middle;margin-right:6px;}
+.mineband .avatar.clickable {min-width:38px;min-height:38px;padding:0;touch-action:manipulation;}
 
 .bot-controls{margin:16px 0;padding:12px;border:1px solid #c49a46;border-radius:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 </style>
@@ -689,7 +690,7 @@ function renderGame(root) {
     '<footer class="dock">' +
       (v.phase === 'bidding' && legal.some(a => a.type === 'misdeal') && v.turn !== you ? '<div class="panel"><button class="btn" data-action="{&quot;type&quot;:&quot;misdeal&quot;}">Declare misdeal (four of a kind)</button></div>' : '') +
       panelHTML(v, showHold) +
-      '<div class="mineband' + (myTurn && !showHold ? ' turn' : '') + '"><span class="nm">' + esc(seatName(you)) + ' (you)</span>' + myTags.join('') + '</div>' +
+      '<div class="mineband' + (myTurn && !showHold ? ' turn' : '') + '">' + avatarHTML(app.snap.seats[you], true, true) + '<span class="nm">' + esc(seatName(you)) + ' (you)</span>' + myTags.join('') + '</div>' +
       '<div class="hand">' + (sittingOutMe ? '' : handCards) + '</div>' +
     '</footer>' +
     '</div>' +
