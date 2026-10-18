@@ -1,6 +1,7 @@
 'use strict';
 // Imperfect-information Buck player. Input is Engine.viewFor(state, seat) only.
 const E = require('./engine');
+const Master = require('./master');
 const I = E._internals;
 const rank = c => c[0];
 const suit = c => c[1];
@@ -70,27 +71,7 @@ function choose(view, memory={}) {
     const scored=acts.map(a=>({a,p:strength(a.card,c.mode,c.trump)})).sort((a,b)=>a.p-b.p);
     return view.seat===c.bidder?scored[0].a:scored[scored.length-1].a;
   }
-  if(phase==='play') {
-    const c=view.contract, trick=view.trick;
-    const scored=acts.map(a=>({a,p:strength(a.card,c.mode,c.trump)}));
-    if(!trick.plays.length) {
-      // Lead winners while they're still likely to stand, based on public seen cards.
-      const seen=new Set(memory.seen||[]);
-      const suitRemaining = card => {
-        const effective=I.effectiveSuit(card,c);
-        const higher=I.makeDeck().filter(x=>I.effectiveSuit(x,c)===effective && I.power(x,c,{aceLowInLow:false})>I.power(card,c,{aceLowInLow:false}));
-        return higher.filter(x=>!seen.has(x)&&!hand.includes(x)).length;
-      };
-      scored.sort((x,y)=> (suitRemaining(x.a.card)*-2+x.p*.2)-(suitRemaining(y.a.card)*-2+y.p*.2));
-      return scored[scored.length-1].a;
-    }
-    const current=I.trickWinner(trick.plays,c,{aceLowInLow:false});
-    const winningTeam=team(current);
-    if(winningTeam===team(view.seat))return scored.sort((a,b)=>a.p-b.p)[0].a;
-    const winners=scored.filter(x=>I.trickWinner([...trick.plays,{seat:view.seat,card:x.a.card}],c,{aceLowInLow:false})===view.seat);
-    if(winners.length)return winners.sort((a,b)=>a.p-b.p)[0].a;
-    return scored.sort((a,b)=>a.p-b.p)[0].a;
-  }
+  if(phase==='play') return Master.choosePlay(view,memory);
   if(phase==='handOver')return acts.find(a=>a.type==='nextHand');
   return acts[0];
 }

@@ -34,6 +34,17 @@ const ROOM_TTL_MS = 3 * 24 * 60 * 60 * 1000; // forget tables idle for 3 days
 const rooms = new Map();
 const botTimers = new Map();
 function isBot(room, seat) { return !!(room.seats[seat] && room.seats[seat].bot); }
+function updateBotMemory(room, oldGame, seat, action, newGame) {
+  if (!newGame || !oldGame || oldGame.handNumber !== newGame.handNumber || action.type === 'misdeal' || action.type === 'newGame') { room.botMemory={seen:[],plays:[],voids:[[],[],[],[]]}; return; }
+  if(action.type!=='play')return;
+  if(!room.botMemory)room.botMemory={seen:[],plays:[],voids:[[],[],[],[]]};
+  const m=room.botMemory, led=oldGame.trick.plays[0];
+  if(led){const suit=Engine._internals.effectiveSuit(led.card,oldGame.contract);
+    if(Engine._internals.effectiveSuit(action.card,oldGame.contract)!==suit && !m.voids[seat].includes(suit))m.voids[seat].push(suit);
+  }
+  m.plays.push({seat,card:action.card});
+  if(!m.seen.includes(action.card))m.seen.push(action.card);
+}
 function scheduleBots(room) {
   if (!room.game || botTimers.has(room.code)) return;
   const game = room.game;
@@ -52,7 +63,7 @@ function scheduleBots(room) {
     const action = Bot.choose(view,room.botMemory || {seen:[]});
     if (!action) return;
     const result = Engine.act(room.game,next,action);
-    if (result.ok) { room.game=result.state; broadcast(room); }
+    if (result.ok) { updateBotMemory(room,room.game,next,action,result.state); room.game=result.state; broadcast(room); }
     else console.error('Bot action rejected:',result.error,action);
   }, 450+Math.floor(Math.random()*350));
   botTimers.set(room.code,timer);
@@ -142,7 +153,7 @@ function sendTo(client, room) {
 function broadcast(room) {
   room.lastActive = Date.now();
   if (room.game && room.game.lastTrick) {
-    if (!room.botMemory) room.botMemory = {seen:[]};
+    if (!room.botMemory) room.botMemory = {seen:[],plays:[],voids:[[],[],[],[]]};
     for (const play of room.game.lastTrick.plays) {
       if (!room.botMemory.seen.includes(play.card)) room.botMemory.seen.push(play.card);
     }
@@ -281,7 +292,7 @@ async function handle(req, res) {
         const token = newToken();
         room.seats[seat] = { name, token, ...profile(body) };
         if (room.hostSeat === undefined) room.hostSeat = seat;
-        if (room.seats.every(Boolean)) {room.game = Engine.newGame();room.botMemory={seen:[]};}
+        if (room.seats.every(Boolean)) {room.game = Engine.newGame();room.botMemory={seen:[],plays:[],voids:[[],[],[],[]]};}
         broadcast(room);
         return json(res, 200, { token, seat });
       }
@@ -306,7 +317,7 @@ async function handle(req, res) {
       const pieces=['hat','car','dog','thimble','iron','boot','ship','wheelbarrow'];
       const colors=['red','blue','green','gold','purple','silver'];
       room.seats[target]={name:'BuckBot '+(target+1),token:null,bot:true,piece:pieces[target],color:colors[target]};
-      if (room.seats.every(Boolean)) {room.game=Engine.newGame();room.botMemory={seen:[]};}
+      if (room.seats.every(Boolean)) {room.game=Engine.newGame();room.botMemory={seen:[],plays:[],voids:[[],[],[],[]]};}
       broadcast(room);
       return json(res,200,{ok:true});
     }
@@ -335,11 +346,11 @@ async function handle(req, res) {
       if (action && action.type === 'newGame') {
         if (room.game.phase !== 'gameOver') return json(res, 400, { error: 'The game is not over yet.' });
         room.game = Engine.newGame({ dealer: (room.game.dealer + 1) % 4 });
-        room.botMemory={seen:[]};
+        room.botMemory={seen:[],plays:[],voids:[[],[],[],[]]};
         result = { ok: true };
       } else {
         result = Engine.act(room.game, seat, action);
-        if (result.ok) room.game = result.state;
+        if (result.ok) { updateBotMemory(room,room.game,seat,action,result.state); room.game = result.state; }
       }
       if (!result.ok) return json(res, 400, { error: result.error });
       broadcast(room);
