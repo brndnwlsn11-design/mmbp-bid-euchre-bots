@@ -36,7 +36,8 @@ const botTimers = new Map();
 function isBot(room, seat) { return !!(room.seats[seat] && room.seats[seat].bot); }
 function updateBotMemory(room, oldGame, seat, action, newGame) {
   if (!newGame || !oldGame || oldGame.handNumber !== newGame.handNumber || action.type === 'misdeal' || action.type === 'newGame') { room.botMemory={seen:[],plays:[],voids:[[],[],[],[]]}; return; }
-  if(action.type!=='play')return;
+  // A defender's 'play' in the decline phase means 'defend', not a card play.
+  if(action.type!=='play' || oldGame.phase!=='play' || !action.card || !oldGame.trick || !Array.isArray(oldGame.trick.plays))return;
   if(!room.botMemory)room.botMemory={seen:[],plays:[],voids:[[],[],[],[]]};
   const m=room.botMemory, led=oldGame.trick.plays[0];
   if(led){const suit=Engine._internals.effectiveSuit(led.card,oldGame.contract);
@@ -59,12 +60,17 @@ function scheduleBots(room) {
   const timer = setTimeout(() => {
     botTimers.delete(room.code);
     if (!room.game || !isBot(room,next)) return;
-    const view = Engine.viewFor(room.game,next);
-    const action = Bot.choose(view,room.botMemory || {seen:[]});
-    if (!action) return;
-    const result = Engine.act(room.game,next,action);
-    if (result.ok) { updateBotMemory(room,room.game,next,action,result.state); room.game=result.state; broadcast(room); }
-    else console.error('Bot action rejected:',result.error,action);
+    try {
+      const view = Engine.viewFor(room.game,next);
+      const action = Bot.choose(view,room.botMemory || {seen:[]});
+      if (!action) { console.error('Bot returned no action', {room:room.code, phase:room.game.phase, seat:next}); return; }
+      const result = Engine.act(room.game,next,action);
+      if (result.ok) { updateBotMemory(room,room.game,next,action,result.state); room.game=result.state; broadcast(room); }
+      else console.error('Bot action rejected:',result.error,action);
+    } catch (error) {
+      console.error('Bot turn failed', {room:room.code, phase:room.game && room.game.phase, seat:next}, error);
+      // Do not kill the Node process and disconnect every player.
+    }
   }, 450+Math.floor(Math.random()*350));
   botTimers.set(room.code,timer);
 }
