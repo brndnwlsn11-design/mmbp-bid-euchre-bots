@@ -22,11 +22,11 @@ function sample(view,memory={}){
   const v=[];for(let s=0;s<assignments.length;s++)if(s===4||s!==seat&&!voids[s].has(eff(card,c)))v.push(s);
   return {card,v};
  });
- for(let attempt=0;attempt<8;attempt++){
+ for(let attempt=0;attempt<3;attempt++){
   const hands=[[],[],[],[]],remaining=assignments.slice();hands[seat]=view.hand.slice();
   const items=shuffle(candidates).sort((a,b)=>a.v.length-b.v.length);
   let nodes=0;
-  function place(i){if(i===items.length)return true;if(++nodes>4500)return false;
+  function place(i){if(i===items.length)return true;if(++nodes>450)return false;
    const {card,v}=items[i];const choices=shuffle(v.filter(s=>remaining[s]>0)).sort((a,b)=>remaining[b]-remaining[a]);
    for(const s of choices){remaining[s]--;if(s<4)hands[s].push(card);
     if(place(i+1))return true;
@@ -35,9 +35,10 @@ function sample(view,memory={}){
   }
   if(place(0))return hands;
  }
- // If exact inference is contradictory, refuse to invent an illegal hand silently.
- // The caller may use a lower-confidence rollout, but void constraints are never discarded.
- return null;
+ // Do not invent an impossible void: if inconsistent, retain known cards and fall back to unconstrained sampling.
+ const hands=[[],[],[],[]];hands[seat]=view.hand.slice();const pool=shuffle(unknown).slice(discard);let i=0;
+ for(let s=0;s<4;s++)if(s!==seat)hands[s]=pool.slice(i,i+=sizes[s]);
+ return hands;
 }
 function apply(h,p,t,card,c,sit){
  const hands=h.map(a=>a.slice()),idx=hands[t].indexOf(card);if(idx<0)throw Error('Invalid simulation card');
@@ -46,7 +47,7 @@ function apply(h,p,t,card,c,sit){
  let next=(t+1)%4;if(next===sit)next=(next+1)%4;
  return {h:hands,p:plays,t:next,point:null};
 }
-function tactical(h,p,t,c,seen,style=0,counts=[0,0]){
+function tactical(h,p,t,c,seen,style=0){
  const cards=legal(h[t],p,c);if(cards.length===1)return cards[0];
  const own=side(t),current=p.length?side(winner(p,c)):null;
  const unplayed=new Set();for(let s=0;s<4;s++)for(const x of h[s])unplayed.add(x);
@@ -57,21 +58,13 @@ function tactical(h,p,t,c,seen,style=0,counts=[0,0]){
   const after=p.concat([{seat:t,card}]);const win=winner(after,c)===t;
   const higher=[...unplayed].filter(x=>x!==card&&eff(x,c)===es&&pow(x,c)>power).length;
   const others=h[t].filter(x=>eff(x,c)===es).length;
-  const remaining=h[t].length;
-  const bidder=side(c.bidder),target=c.amount>=12?6:c.amount;
-  const bidderNeeds=Math.max(0,target-counts[bidder]);
-  const defenderNeeds=Math.max(0,7-target-counts[1-bidder]);
-  const urgent=(own===bidder?bidderNeeds:defenderNeeds)>=remaining?1:0;
   let value;
   if(!p.length){
    value=2.4/(higher+1)+.16*others+(trump?-.12:0)+rank*.015;
-   // Lead a high card when the contract is on the line, but preserve control otherwise.
-   if(urgent)value+=higher===0?1.2:0;
-   if(!urgent&&higher===0&&remaining>2)value-=.42;
    if(style===1)value+=higher===0?.8:0;
    if(style===2)value+=trump&&others>=3?.65:0;
-  }else if(current===own){value=-rank*.17-(trump?.85:0)+(win?-2.8:0);}
-  else if(win){value=2.6-rank*.09-(trump?.15:0)+(urgent?1.1:0);}
+  }else if(current===own){value=-rank*.14-(trump?.85:0)+(win?-1.3:0);}
+  else if(win){value=2.6-rank*.09-(trump?.15:0);}
   else value=-rank*.12-(trump?.6:0);
   value+=Math.random()*.06;
   if(value>bv){bv=value;best=card;}
@@ -90,7 +83,7 @@ function utility(tricks,c,team){
 function rollout(h,p,t,c,sit,counts,style){
  const seen=new Set(),tricks=counts.slice();let limit=28;
  while(limit--&&h.some((a,s)=>s!==sit&&a.length)){
-  const card=tactical(h,p,t,c,seen,style,tricks),n=apply(h,p,t,card,c,sit);
+  const card=tactical(h,p,t,c,seen,style),n=apply(h,p,t,card,c,sit);
   seen.add(card);h=n.h;p=n.p;t=n.t;if(n.point!==null)tricks[n.point]++;
  }
  return tricks;
@@ -113,12 +106,10 @@ function choosePlay(view,memory={}){
  const c=view.contract,team=side(view.seat),sit=view.sittingOut;
  const n=view.hand.length,late=n<=2;
  // Bounded samples keep the free Node service responsive.
- const samples=late?65:n===3?80:n===4?100:150;
- const scores=actions.map(()=>0);let valid=0;
+ const samples=late?65:n===3?60:n===4?65:75;
+ const scores=actions.map(()=>0);
  for(let k=0;k<samples;k++){
   const h=sample(view,memory);
-  if(!h)continue;
-  valid++;
   for(let i=0;i<actions.length;i++){
    const step=apply(h,view.trick.plays,view.seat,actions[i].card,c,sit);
    let value;
@@ -136,10 +127,9 @@ function choosePlay(view,memory={}){
    scores[i]+=value;
   }
  }
- if(!valid)return actions.reduce((a,b)=>pow(a.card,c)<pow(b.card,c)?a:b);
  let best=0,bv=-Infinity;
  for(let i=0;i<actions.length;i++){
-  const v=scores[i]/Math.max(1,valid) + .00001*(100-pow(actions[i].card,c));
+  const v=scores[i]/samples + .00001*(100-pow(actions[i].card,c));
   if(v>bv){best=i;bv=v;}
  }
  return actions[best];

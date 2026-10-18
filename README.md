@@ -1,20 +1,17 @@
-# Buck v1.5.1 — Trick-Play Candidate (Bot Test Only)
+# Buck v1.5 — Stronger Search Bots (Experimental)
 
-This is a **candidate** upgrade over v1.5, not a proven stronger opponent. It retains the same bidding, defensive decline, exchange, scoring, avatars, Good Guys / Bad Guys display, and cabin emotes.
+Separate bot-test deployment only. Upload all files to your bot GitHub repository and let Render redeploy.
 
-## Changes to `master.js`
-- Increase early-hand rollout sampling from 75 to 150 for six/five-card positions, and to 100 for four-card positions.
-- Make simulated continuation players much less likely to overtake a partner who is already winning a trick.
-- Add urgency based on how many tricks the bidding partnership still needs to make its contract, or how many tricks defenders need to set it.
-- Increase attempts/backtracking for unseen-hand allocation consistent with known void suits; do not silently discard those constraints. If a consistent allocation cannot be found, use a conservative legal card rather than an invented impossible deal.
+## Changes
+- Information-set trick search evaluates contract outcomes (making/setting the bid), not just total tricks.
+- Randomized hidden-card assignment with public void-suit constraints, including effective trump suits.
+- Multiple simulated continuation styles reduce reliance on one brittle play heuristic.
+- Larger endgame search budget and double-dummy minimax for the last two cards.
+- No direct access to actual opponents' hidden cards; inputs are seat-filtered `Engine.viewFor` and public card memory.
+- Bidding, declines, exchanges and game UI unchanged from v1.4.
 
-## Evidence and caveats
-- `node compare.js 2` completed four head-to-head full matches on paired seeds; results were 2–2. This is **not evidence of a strength improvement**. Longer comparisons exceeded execution limits and were not completed.
-- The previous 45-decision audit was a useful diagnostic but did not measure the counterfactual value of these specific changes. It does not justify calling this an optimal or master-level bot.
-- More samples can increase server latency. Test on the separate Render site, especially early-hand turns. The search remains an approximation and does not know other hands.
-- The paired benchmark uses identical initial deal seeds with sides reversed, but game trajectories diverge; it is not a perfect duplicate-deal trick-level evaluator.
+## Limitations
+This is not proven optimal, and the search can still be fooled by hidden information. Simulated opponents are approximations, and the late-hand minimax uses sampled complete hands. The sampler relaxes void constraints if its limited backtracking fails, so inferred voids are not guaranteed to hold in every simulation. Benchmark results on a small number of games are not statistically conclusive.
 
-## Test and install
-Run `node --check master.js`, `node compare.js 2`, and `node benchmark.js 2` locally. Upload the application files to your separate bot-test GitHub repository. Do not deploy this over the human-only site.
-
-`master_v15.js`, `bot_v15.js`, and `compare.js` are comparison-only files, not required by the web server. They are included for reproducibility.
+## Testing
+`node benchmark.js 2` runs a seeded two-game comparison against the old heuristic baseline. Increase cautiously; search is CPU intensive and free Render servers are limited.
