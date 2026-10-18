@@ -230,6 +230,18 @@ button.card.dim { filter: brightness(.62); }
 .mineband .avatar.clickable {min-width:38px;min-height:38px;padding:0;touch-action:manipulation;}
 
 .bot-controls{margin:16px 0;padding:12px;border:1px solid #c49a46;border-radius:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* Cabin-inspired floating table talk: parchment with a subtle timber edge. */
+.seat-name-wrap,.mine-name-wrap {position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:0;}
+.emote-bubble {position:absolute;left:calc(100% + 8px);top:50%;transform-origin:left center;z-index:70;width:max-content;max-width:min(190px,46vw);padding:9px 13px;border-radius:16px 16px 16px 5px;border:2px solid #a57b4b;background:linear-gradient(155deg,#fff5dd,#f1dfba);color:#3d2a1b;font:700 13px/1.25 Georgia,serif;text-align:center;white-space:normal;overflow-wrap:break-word;box-shadow:0 4px 0 #62492b,0 10px 20px #0007;pointer-events:none;animation:cabin-emote 4.2s both;}
+.emote-bubble::before {content:'';position:absolute;left:-9px;top:calc(50% - 7px);border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:9px solid #a57b4b;}
+.seat.right .emote-bubble {left:auto;right:calc(100% + 8px);transform-origin:right center;}
+.seat.right .emote-bubble::before {left:auto;right:-9px;border-right:0;border-left:9px solid #a57b4b;}
+.mine-name-wrap .emote-bubble {top:auto;bottom:calc(100% + 12px);left:50%;transform-origin:center bottom;}
+.mine-name-wrap .emote-bubble::before {left:calc(50% - 7px);top:auto;bottom:-9px;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #a57b4b;border-bottom:0;}
+@keyframes cabin-emote {0%{opacity:0;scale:.65;translate:0 7px}4%{opacity:1;scale:1.12;translate:0 0}7%{scale:.96}11%{scale:1}83%{opacity:1;scale:1}100%{opacity:0;scale:.88;translate:0 -5px}}
+@media (prefers-reduced-motion:reduce){.emote-bubble{animation:cabin-emote-accessible 4.2s both}@keyframes cabin-emote-accessible{0%{opacity:1}83%{opacity:1}100%{opacity:0}}}
+
 </style>
 </head>
 <body>
@@ -271,7 +283,7 @@ function store(key, value) {
  * ===================================================================== */
 const PIECES = {hat:'🎩',car:'🏎️',dog:'🐕',thimble:'🪡',iron:'♨️',boot:'🥾',ship:'🚢',wheelbarrow:'🛒'};
 const COLORS = {red:'#cb5047',blue:'#4d89c7',green:'#55a67b',gold:'#d9ad4d',purple:'#9876c7',silver:'#aeb9c2'};
-const EMOTES = ['Uff da.','Well, sure.','Good for you.','Oh, fer sure.',"That's different.",'Would ya look at that.',"Let's take a look.","I'm not looking good."];
+const EMOTES = ['Uff da.','Sure.','Interesting.','Good for you.',"That's different.",'Would ya look at that.',"Let's take a look.","I'm not looking good."];
 function avatarHTML(s, clickable=false, small=false) {
   const piece = s && PIECES[s.piece] ? s.piece : 'hat';
   const color = s && COLORS[s.color] ? COLORS[s.color] : COLORS.gold;
@@ -606,9 +618,9 @@ function seatBadge(seat, v, posClass) {
   if (info && !info.connected && seat !== you) tags.push('<span class="tag off">Away</span>');
   const isTurn = v.turn === seat || (v.phase === 'exchange' && false);
   const backs = seat !== you && v.handSizes[seat] > 0 ? '<div class="backs" aria-label="' + v.handSizes[seat] + ' cards">' + '<i></i>'.repeat(v.handSizes[seat]) + '</div>' : '';
-  const bubble = app.snap.emote && app.snap.emote.seat === seat ? '<div class="emote-bubble">' + esc(app.snap.emote.phrase) + '</div>' : '';
+  const bubble = app.snap.emote && app.snap.emote.until > Date.now() && app.snap.emote.seat === seat ? '<div class="emote-bubble">' + esc(app.snap.emote.phrase) + '</div>' : '';
   return '<div class="seat ' + posClass + (isTurn ? ' turn' : '') + '">' +
-    bubble + avatarHTML(info) + '<div class="nm">' + esc(seatName(seat)) + '</div>' +
+    avatarHTML(info) + '<div class="seat-name-wrap"><div class="nm">' + esc(seatName(seat)) + '</div>' + bubble + '</div>' +
     '<div class="tags">' + tags.join('') + '</div>' + backs + '</div>';
 }
 
@@ -690,7 +702,7 @@ function renderGame(root) {
     '<footer class="dock">' +
       (v.phase === 'bidding' && legal.some(a => a.type === 'misdeal') && v.turn !== you ? '<div class="panel"><button class="btn" data-action="{&quot;type&quot;:&quot;misdeal&quot;}">Declare misdeal (four of a kind)</button></div>' : '') +
       panelHTML(v, showHold) +
-      '<div class="mineband' + (myTurn && !showHold ? ' turn' : '') + '">' + avatarHTML(app.snap.seats[you], true, true) + '<span class="nm">' + esc(seatName(you)) + ' (you)</span>' + myTags.join('') + '</div>' +
+      '<div class="mineband' + (myTurn && !showHold ? ' turn' : '') + '">' + avatarHTML(app.snap.seats[you], true, true) + '<span class="mine-name-wrap"><span class="nm">' + esc(seatName(you)) + ' (you)</span>' + (app.snap.emote && app.snap.emote.until > Date.now() && app.snap.emote.seat === you ? '<span class="emote-bubble">' + esc(app.snap.emote.phrase) + '</span>' : '') + '</span>' + myTags.join('') + '</div>' +
       '<div class="hand">' + (sittingOutMe ? '' : handCards) + '</div>' +
     '</footer>' +
     '</div>' +

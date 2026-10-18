@@ -60,7 +60,7 @@ function scheduleBots(room) {
 
 const PIECES = ['hat','car','dog','thimble','iron','boot','ship','wheelbarrow'];
 const COLORS = ['red','blue','green','gold','purple','silver'];
-const EMOTES = ['Uff da.','Well, sure.','Good for you.','Oh, fer sure.',"That's different.",'Would ya look at that.',"Let's take a look.","I'm not looking good."];
+const EMOTES = ['Uff da.','Sure.','Interesting.','Good for you.',"That's different.",'Would ya look at that.',"Let's take a look.","I'm not looking good."];
 function profile(body) {
   return { piece: PIECES.includes(body.piece) ? body.piece : 'hat', color: COLORS.includes(body.color) ? body.color : 'gold' };
 }
@@ -314,8 +314,8 @@ async function handle(req, res) {
       if (!room.game) return json(res, 400, { error: 'Wait for the game to start.' });
       const phrase = body.phrase;
       if (!EMOTES.includes(phrase)) return json(res, 400, { error: 'Unknown emote.' });
-      if (room.emote && room.emote.seat === seat && Date.now() - (room.emote.until - 3600) < 1200) return json(res, 429, { error: 'Give it a moment.' });
-      room.emote = { seat, phrase, until: Date.now() + 3600 };
+      if (room.emote && room.emote.seat === seat && Date.now() - (room.emote.until - 4200) < 1200) return json(res, 429, { error: 'Give it a moment.' });
+      room.emote = { seat, phrase, until: Date.now() + 4200 };
       broadcast(room);
       return json(res, 200, { ok: true });
     }

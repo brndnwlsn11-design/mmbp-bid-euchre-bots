@@ -56,3 +56,10 @@ To deploy: upload the five application files (not this ZIP itself) into the root
 
 
 Avatar hotfix: Your own avatar is now a clickable button in the bottom player band, next to your name above your cards. Tap it to open/close the table-talk emote menu.
+
+
+## Cabin emote update
+
+The eight emotes are: Uff da.; Sure.; Interesting.; Good for you.; That's different.; Would ya look at that.; Let's take a look.; I'm not looking good.
+
+Tap your own avatar above your cards. The chosen phrase appears beside the speaking player's name in a floating parchment-and-wood-trim bubble, pops into view, stays for about 3.5 seconds, then fades out by 4.2 seconds. Emotes are available during bidding and play, and do not perform game actions.
