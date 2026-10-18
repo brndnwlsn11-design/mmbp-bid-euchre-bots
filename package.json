@@ -1,0 +1,12 @@
+{
+  "name": "bid-euchre",
+  "version": "1.0.0",
+  "description": "Online bid euchre for friends, with house rules",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/test.js && node tests/e2e.js"
+  },
+  "engines": { "node": ">=18" }
+}
